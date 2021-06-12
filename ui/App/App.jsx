@@ -1,4 +1,4 @@
-import React, {useCallback, useState} from 'react';
+import React, {useCallback, useState, useEffect} from 'react';
 
 import user from "../api/resources/user";
 import Login from "./views/Login";
@@ -17,6 +17,7 @@ import Console from "./views/Console";
 import Help from "./views/Help";
 import socket from "../api/socket";
 import {Flash} from "./components/Flash";
+import MapGenerator from "./views/MapGenerator/MapGenerator";
 
 
 const App = () => {
@@ -48,7 +49,7 @@ const App = () => {
         }
     }, []);
 
-    const ProtectedRoute = useCallback(({component: Component, ...rest}) => (
+    const ProtectedRoute = ({component: Component, ...rest}) => (
         <Route {...rest} render={(props) => (
             isAuthenticated && Component
                 ? <Component serverStatus={serverStatus} updateServerStatus={updateServerStatus} {...props} />
@@ -57,16 +58,23 @@ const App = () => {
                     state: {from: props.location}
                 }}/>
         )}/>
-    ), [isAuthenticated, serverStatus]);
+    );
+
+    useEffect(() => {
+        (async () => {
+            updateServerStatus()
+        })();
+    }, []);
 
     return (
         <BrowserRouter basename="/">
             <Switch>
                 <Route path="/login" render={() => (<Login handleLogin={handleAuthenticationStatus}/>)}/>
 
-                <Layout handleLogout={handleLogout} serverStatus={serverStatus} updateServerStatus={updateServerStatus}>
+                <Layout handleLogout={handleLogout} serverStatus={serverStatus}>
                     <ProtectedRoute exact path="/" component={Controls}/>
                     <ProtectedRoute path="/saves" component={Saves}/>
+                    <ProtectedRoute path="/map-generator" component={MapGenerator}/>
                     <ProtectedRoute path="/mods" component={Mods}/>
                     <ProtectedRoute path="/server-settings" component={ServerSettings}/>
                     <ProtectedRoute path="/game-settings" component={GameSettings}/>

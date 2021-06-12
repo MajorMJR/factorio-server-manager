@@ -1,9 +1,9 @@
 import React from "react";
 
-const Label = ({text, htmlFor}) => {
+const Label = ({text, htmlFor, isInline = false}) => {
     return (
         <label
-            className="block text-white text-sm font-bold mb-1" htmlFor={htmlFor}>
+            className={"text-white text-sm font-bold mb-1 " + (isInline ? "inline-block mx-2" : "block")} htmlFor={htmlFor}>
             {text}
         </label>
     )

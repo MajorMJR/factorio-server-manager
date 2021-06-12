@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/OpenFactorioServerManager/factorio-server-manager/bootstrap"
@@ -64,14 +65,21 @@ func (s *Save) Remove() error {
 }
 
 // Create savefiles for Factorio
-func CreateSave(filePath string) (string, error) {
+func CreateSave(filePath string, mapSettingsGenFilePath string, mapSettingsFilePath string) (string, error) {
 	err := os.MkdirAll(filepath.Dir(filePath), 0755)
 	if err != nil {
 		log.Printf("Error in creating Factorio save: %s", err)
 		return "", err
 	}
 
-	args := []string{"--create", filePath}
+	args := []string{
+		"--map-gen-settings",
+		mapSettingsGenFilePath,
+		"--map-settings",
+		mapSettingsFilePath,
+		"--create",
+		filePath,
+	}
 	config := bootstrap.GetConfig()
 	cmdOutput, err := exec.Command(config.FactorioBinary, args...).Output()
 	if err != nil {
@@ -83,4 +91,59 @@ func CreateSave(filePath string) (string, error) {
 	result := string(cmdOutput)
 
 	return result, nil
+}
+
+func GenerateMapPreview(mapSettingsGenFilePath string, mapSettingsFilePath string) (string, error) {
+
+	if _, err := os.Stat("./map_previews"); err != nil {
+		err = os.Mkdir("./map_previews", 664)
+		if err != nil {
+			log.Printf("Failed to create folder %s with permission: %s\n", "./map_previews", err)
+			return "", err
+		}
+	}
+
+	previewFolder, _ := filepath.Abs("./map_previews")
+
+	// adding slash will indicate for factorio it is a path and not an image file
+	// source: https://wiki.factorio.com/Command_line_parameters
+	previewFolder += string(filepath.Separator)
+
+	args := []string{
+		"--map-gen-settings",
+		mapSettingsGenFilePath,
+		"--generate-map-preview",
+		previewFolder,
+		"--map-settings",
+		mapSettingsFilePath,
+	}
+
+	config := bootstrap.GetConfig()
+	log.Println(filepath.Abs(config.FactorioBinary))
+	cmdOutput, err := exec.Command(config.FactorioBinary, args...).Output()
+	if err != nil {
+		log.Printf("Error in creating Factorio save: %s", err)
+		return "", err
+	}
+
+	result := string(cmdOutput)
+
+	// extract image path from result
+	startMark := "Wrote map preview image file: "
+	endMark := ".png"
+
+	startIndex := strings.Index(result, startMark)
+	if startIndex == -1 {
+		return "", errors.New("failed to detect start of the image path")
+	}
+	startIndex += len(startMark)
+	endIndex := strings.Index(result[startIndex:], endMark)
+
+	if endIndex == -1 {
+		return "", errors.New("failed to detect end of the image path")
+	}
+	endIndex += len(endMark)
+	imagePath := result[startIndex:][:endIndex]
+
+	return imagePath, nil
 }

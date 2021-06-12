@@ -12,6 +12,9 @@ module.exports = {
 },
   theme: {
     extend: {
+      minHeight: {
+        '1/2': '50%',
+      },
       width: {
         72: "18rem",
         80: "20rem",

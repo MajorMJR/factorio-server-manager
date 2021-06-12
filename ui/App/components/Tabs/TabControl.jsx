@@ -1,7 +1,8 @@
 import React, {useState} from "react";
 import TabTitle from "./TabTitle";
+import Panel from "../Panel";
 
-const TabControl = ({children}) => {
+const TabControl = ({children, actions = null, title= null}) => {
     const [selectedTab, setSelectedTab] = useState(0)
 
     return (
@@ -17,11 +18,12 @@ const TabControl = ({children}) => {
                     />
                 ))}
             </div>
-            <div className="z-10 relative accentuated bg-gray-dark p-4">
-                <div className="text-white rounded-sm bg-gray-medium shadow-inner px-6 pt-4 pb-6">
-                    {children[selectedTab]}
-                </div>
-            </div>
+            <Panel
+                className="z-10 relative"
+                content={children[selectedTab]}
+                title={title}
+                actions={actions}
+            />
         </div>
     )
 }

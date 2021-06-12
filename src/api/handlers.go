@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -209,8 +210,16 @@ func RemoveSave(w http.ResponseWriter, r *http.Request) {
 func CreateSaveHandler(w http.ResponseWriter, r *http.Request) {
 	var err error
 	var resp interface{}
+	var mapGenSettingsFileName string
+	var mapSettingsFileName string
 
 	defer func() {
+		if mapGenSettingsFileName != "" {
+			_ = os.Remove(mapGenSettingsFileName)
+		}
+		if mapSettingsFileName != "" {
+			_ = os.Remove(mapSettingsFileName)
+		}
 		WriteResponse(w, resp)
 	}()
 
@@ -223,9 +232,47 @@ func CreateSaveHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+
+	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
+
+	body, resp, err := ReadRequestBody(w, r)
+	if err != nil {
+		return
+	}
+
+	var mapGenSettings factorio.MapGenSettings
+	mapGenSettings, resp, err = UnmarshallMapGenSettingsJson(body, w)
+
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	mapGenSettingsFileName, resp, err = ParseSettingsAsFile(mapGenSettings)
+
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	var mapSettings factorio.MapSettings
+	mapSettings, resp, err = UnmarshallMapSettingsJson(body, w)
+
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	mapSettingsFileName, resp, err = ParseSettingsAsFile(mapSettings)
+
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	config := bootstrap.GetConfig()
 	saveFile := filepath.Join(config.FactorioSavesDir, saveName)
-	cmdOut, err := factorio.CreateSave(saveFile)
+	cmdOut, err := factorio.CreateSave(saveFile, mapGenSettingsFileName, mapSettingsFileName)
 	if err != nil {
 		resp = fmt.Sprintf("Error creating save {%s}: %s", saveName, err)
 		log.Println(resp)
@@ -422,6 +469,91 @@ func CheckServer(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func DefaultMapSettings(w http.ResponseWriter, r *http.Request) {
+	WriteResponse(w, factorio.DefaultMapSettings())
+}
+
+func DefaultMapGenSettings(w http.ResponseWriter, r *http.Request) {
+	WriteResponse(w, factorio.DefaultMapGenSettings())
+}
+
+func GenerateMapPreview(w http.ResponseWriter, r *http.Request) {
+	var resp interface{}
+	var mapGenSettingsFileName string
+	var mapSettingsFileName string
+	var previewImagePath string
+
+	defer func() {
+		if mapGenSettingsFileName != "" {
+			_ = os.Remove(mapGenSettingsFileName)
+		}
+		if mapSettingsFileName != "" {
+			_ = os.Remove(mapSettingsFileName)
+		}
+		if previewImagePath != "" {
+			_ = os.Remove(previewImagePath)
+		}
+		WriteResponse(w, resp)
+	}()
+
+	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
+
+	body, resp, err := ReadRequestBody(w, r)
+	if err != nil {
+		return
+	}
+
+	var mapGenSettings factorio.MapGenSettings
+	mapGenSettings, resp, err = UnmarshallMapGenSettingsJson(body, w)
+
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	mapGenSettingsFileName, resp, err = ParseSettingsAsFile(mapGenSettings)
+
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	var mapSettings factorio.MapSettings
+	mapSettings, resp, err = UnmarshallMapSettingsJson(body, w)
+
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	mapSettingsFileName, resp, err = ParseSettingsAsFile(mapSettings)
+
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	previewImagePath, err = factorio.GenerateMapPreview(mapGenSettingsFileName, mapSettingsFileName)
+
+	if err != nil {
+		resp = fmt.Sprintf("Error creating map preview %s", err)
+		log.Println(resp)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	previewImage, err := ioutil.ReadFile(previewImagePath)
+
+	if err != nil {
+		resp = fmt.Sprintf("Error read preview image %s", err)
+		log.Println(resp)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	resp = "data:image/png;base64," + base64.StdEncoding.EncodeToString(previewImage)
+}
+
 func FactorioVersion(w http.ResponseWriter, r *http.Request) {
 	resp := map[string]string{}
 
@@ -445,6 +577,55 @@ func UnmarshallUserJson(body []byte, w http.ResponseWriter) (user User, resp int
 		w.WriteHeader(http.StatusBadRequest)
 	}
 	return
+}
+
+func UnmarshallMapSettingsJson(body []byte, w http.ResponseWriter) (settings factorio.MapSettings, resp interface{}, err error) {
+	settings = factorio.DefaultMapSettings()
+	err = json.Unmarshal(body, &settings)
+	if err != nil {
+		resp = fmt.Sprintf("Unable to parse the request body: %s", err)
+		log.Println(resp)
+		w.WriteHeader(http.StatusBadRequest)
+	}
+	return
+}
+
+func UnmarshallMapGenSettingsJson(body []byte, w http.ResponseWriter) (settings factorio.MapGenSettings, resp interface{}, err error) {
+	settings = factorio.DefaultMapGenSettings()
+	err = json.Unmarshal(body, &settings)
+	if err != nil {
+		resp = fmt.Sprintf("Unable to parse the request body: %s", err)
+		log.Println(resp)
+		w.WriteHeader(http.StatusBadRequest)
+	}
+	return
+}
+
+func ParseSettingsAsFile(settings interface{}) (fileName string, resp interface{}, err error) {
+
+	var fileContent []byte
+	fileContent, err = json.MarshalIndent(settings, "", "")
+
+	if err != nil {
+		resp = fmt.Sprintf("Unable to parse the request body: %s", err)
+		return
+	}
+
+	var file *os.File
+	file, err = ioutil.TempFile("", "factorio-settings-file")
+
+	if err != nil {
+		resp = fmt.Sprint("Unable to create tmp file")
+		return
+	}
+
+	_, err = file.Write(fileContent)
+
+	if err != nil {
+		resp = fmt.Sprintf("Unable to write tmp file %s", file.Name())
+		return
+	}
+	return file.Name(), resp, err
 }
 
 // Handler for the Login

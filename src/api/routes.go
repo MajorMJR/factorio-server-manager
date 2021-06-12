@@ -94,6 +94,10 @@ func NewRouter() *mux.Router {
 		Methods("GET").
 		Name("Saves").
 		Handler(http.StripPrefix("/saves", http.FileServer(http.Dir("./app/"))))
+	sr.Path("/map-generator").
+		Methods("GET").
+		Name("MapGenerator").
+		Handler(http.StripPrefix("/map-generator", http.FileServer(http.Dir("./app/"))))
 	sr.Path("/mods").
 		Methods("GET").
 		Name("Mods").
@@ -161,10 +165,28 @@ var apiRoutes = Routes{
 		false,
 	}, {
 		"CreateSave",
-		"GET",
+		"POST",
 		"/saves/create/{save}",
 		CreateSaveHandler,
 		true,
+	}, {
+		"GenerateMapPreview",
+		"POST",
+		"/saves/preview",
+		GenerateMapPreview,
+		true,
+	}, {
+		"DefaultMapSettings",
+		"GET",
+		"/saves/default-map-settings",
+		DefaultMapSettings,
+		false,
+	}, {
+		"DefaultMapGenSettings",
+		"GET",
+		"/saves/default-map-gen-settings",
+		DefaultMapGenSettings,
+		false,
 	}, {
 		"LoadModsFromSave",
 		"POST",
