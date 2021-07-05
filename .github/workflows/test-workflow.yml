@@ -15,7 +15,17 @@ env:
   dir: '../'
   conf: '../../conf.json.example'
 jobs:
+  check-double-run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: rlespinasse/github-slug-action@v3.x
+      - name: Cancel this build
+        uses: knoxfighter/cancel-multi-action@main
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+        if: github.event_name == 'pull_request'
   test-npm:
+    needs: [ check-double-run ]
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
@@ -25,6 +35,7 @@ jobs:
       - uses: actions/setup-node@v1
       - run: make app/bundle
   test-go:
+    needs: [check-double-run]
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
