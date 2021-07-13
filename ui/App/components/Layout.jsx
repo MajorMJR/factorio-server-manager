@@ -4,29 +4,21 @@ import Button from "./Button";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {faBars} from "@fortawesome/free-solid-svg-icons";
 
-const Layout = ({children, handleLogout, serverStatus, updateServerStatus}) => {
+const Layout = ({children, handleLogout, serverStatus}) => {
 
     const [isNavCollapsed, setIsNavCollapsed] = useState(true);
-
-    useEffect(() => {
-        (async () => {
-            updateServerStatus()
-        })();
-    }, []);
 
     const Status = ({info}) => {
 
         let text = 'Unknown';
         let color = 'gray-light';
 
-        if (info) {
-            if (info.status === 'running') {
-                text = 'Running';
-                color = 'green';
-            } else if (info.status === 'stopped') {
-                text = 'Stopped';
-                color = 'red';
-            }
+        if (info && info.running) {
+            text = 'Running';
+            color = 'green';
+        } else if (info && !info.running) {
+            text = 'Stopped';
+            color = 'red';
         }
 
         return (
@@ -97,7 +89,7 @@ const Layout = ({children, handleLogout, serverStatus, updateServerStatus}) => {
 
             {/*Main*/}
             <div className="md:ml-88 min-h-screen">
-                <div className="container mx-auto pt-16 px-6">
+                <div className="container md:mx-auto pt-16 md:px-6">
                     {children}
                 </div>
             </div>

@@ -24,7 +24,7 @@ export const Flash = () => {
     }, []);
 
     return (
-        visibility && <div className={`bg-${color} accentuated rounded fixed bottom-0 right-0 mr-8 mb-8 px-4 py-2`}>
+        visibility && <div onClick={() => setVisibility(false)} className={`bg-${color} cursor-pointer accentuated rounded fixed bottom-0 right-0 mr-8 mb-8 px-4 py-2 z-50 max-w-1/2 lg:max-w-none`}>
             <p>{message}</p>
         </div>
     )

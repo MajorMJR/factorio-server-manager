@@ -52,8 +52,13 @@ module.exports = {
       inner: 'inset 0 4px 8px 0 rgba(0, 0, 0, 0.9)',
       outline: '0 0 0 3px rgba(66, 153, 225, 0.5)',
       'none': 'none',
-}
+    },
+    maxWidth: {
+      '1/2': '50%',
+    }
   },
-  variants: {},
+  variants: {
+    maxWidth: ['responsive']
+  },
   plugins: [],
 }

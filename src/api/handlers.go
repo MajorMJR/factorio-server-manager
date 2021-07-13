@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"sync"
 	"time"
 
@@ -404,22 +403,11 @@ func KillServer(w http.ResponseWriter, r *http.Request) {
 }
 
 func CheckServer(w http.ResponseWriter, r *http.Request) {
-	resp := map[string]string{}
-
 	defer func() {
-		WriteResponse(w, resp)
+		WriteResponse(w, factorio.GetFactorioServer())
 	}()
 
 	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
-	var server = factorio.GetFactorioServer()
-	if server.GetRunning() {
-		resp["status"] = "running"
-		resp["port"] = strconv.Itoa(server.Port)
-		resp["savefile"] = server.Savefile
-		resp["address"] = server.BindIP
-	} else {
-		resp["status"] = "stopped"
-	}
 }
 
 func FactorioVersion(w http.ResponseWriter, r *http.Request) {

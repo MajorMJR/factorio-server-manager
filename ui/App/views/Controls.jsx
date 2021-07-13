@@ -8,11 +8,13 @@ import Select from "../components/Select";
 import Input from "../components/Input";
 import Error from "../components/Error";
 
-const Controls = ({serverStatus, updateServerStatus}) => {
+const Controls = ({serverStatus}) => {
 
-    const [factorioVersion, setFactorioVersion] = useState('unknown');
-    const isRunning = serverStatus.status === 'running';
+    const factorioVersion = serverStatus.fac_version ? serverStatus.fac_version : 'Unknown';
     const [saves, setSaves] = useState([]);
+    const [isStopping, setIsStopping] = useState(false);
+    const [isStarting, setIsStarting] = useState(false);
+    const [isKilling, setIsKilling] = useState(false);
 
     const { handleSubmit, register, errors } = useForm();
 
@@ -21,24 +23,21 @@ const Controls = ({serverStatus, updateServerStatus}) => {
             window.flash("Save must be created before starting server", "red");
             return;
         }
+        setIsStarting(true);
         await server.start(data.ip, parseInt(data.port), data.save);
-        await updateServerStatus();
     }
 
     const stopServer = async () => {
+        setIsStopping(true);
         await server.stop();
-        await updateServerStatus();
     }
 
     const killServer = async () => {
+        setIsKilling(true);
         await server.kill();
-        await updateServerStatus();
     }
 
     useEffect(() => {
-        server.factorioVersion()
-            .then(res => setFactorioVersion(res.version));
-
         savesResource.list()
             .then(res => setSaves(res));
     }, [])
@@ -49,15 +48,15 @@ const Controls = ({serverStatus, updateServerStatus}) => {
             title="Server Status"
             content={
                 <div className="lg:flex">
-                    { isRunning
+                    { serverStatus.running
                         ? <>
                             <div className="lg:w-1/5 mb-2">
                                 <div className="font-bold">Status</div>
-                                <div>{serverStatus.status}</div>
+                                <div>{serverStatus.running ? 'Running' : 'Stopped'}</div>
                             </div>
                             <div className="lg:w-1/5 mb-2">
                                 <div className="font-bold">IP</div>
-                                <div>{serverStatus.address}</div>
+                                <div>{serverStatus.bindip}</div>
                             </div>
                             <div className="lg:w-1/5 mb-2">
                                 <div className="font-bold">Port</div>
@@ -75,7 +74,7 @@ const Controls = ({serverStatus, updateServerStatus}) => {
                         : <>
                             <div className="lg:w-1/5 mb-2">
                                 <div className="font-bold">Status</div>
-                                <div>{serverStatus.status}</div>
+                                <div>{serverStatus.running ? 'Running' : 'Stopped'}</div>
                             </div>
                             <div className="lg:w-1/5 mb-2 mr-0 lg:mr-4">
                                 <div className="font-bold">IP</div>
@@ -121,12 +120,12 @@ const Controls = ({serverStatus, updateServerStatus}) => {
             }
             actions={
                 <div className="md:flex">
-                    {isRunning
+                    {serverStatus.running
                         ? <>
-                            <Button onClick={stopServer} size="sm" className="w-full md:w-auto mb-2 md:mb-0 md:mr-2" type="default">Save & Stop Server</Button>
-                            <Button onClick={killServer} size="sm" type="danger" className="w-full md:w-auto">Kill Server</Button>
+                            <Button onClick={stopServer} isLoading={isStopping} isDisabled={isKilling} size="sm" className="w-full md:w-auto mb-2 md:mb-0 md:mr-2" type="default">Save & Stop Server</Button>
+                            <Button onClick={killServer} isLoading={isKilling} isDisabled={isStopping} size="sm" type="danger" className="w-full md:w-auto">Kill Server</Button>
                         </>
-                        : <Button isSubmit={true} size="sm" type="success" className="w-full md:w-auto">Start Server</Button>
+                        : <Button isSubmit={true} isLoading={isStarting} size="sm" type="success" className="w-full md:w-auto">Start Server</Button>
                     }
                 </div>
             }

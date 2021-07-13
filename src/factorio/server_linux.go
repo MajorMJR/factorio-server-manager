@@ -41,7 +41,6 @@ func (server *Server) Stop() error {
 		log.Printf("Error sending SIGINT to Factorio process: %s", err)
 		return err
 	}
-	server.SetRunning(false)
 	log.Printf("Sent SIGINT to Factorio process. Factorio shutting down...")
 
 	err = server.Rcon.Close()
@@ -50,4 +49,8 @@ func (server *Server) Stop() error {
 	}
 
 	return nil
+}
+
+func (server *Server) checkProcessHealth(text string) {
+	// ignore
 }

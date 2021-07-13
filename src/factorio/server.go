@@ -26,7 +26,7 @@ type Server struct {
 	Latency        int                    `json:"latency"`
 	BindIP         string                 `json:"bindip"`
 	Port           int                    `json:"port"`
-	running        bool                   `json:"running"`
+	Running        bool                   `json:"running"`
 	Version        Version                `json:"fac_version"`
 	BaseModVersion string                 `json:"base_mod_version"`
 	StdOut         io.ReadCloser          `json:"-"`
@@ -41,16 +41,17 @@ var instantiated Server
 var once sync.Once
 
 func (server *Server) SetRunning(newState bool) {
-	if server.running != newState {
+	if server.Running != newState {
 		log.Println("new state, will also send to correct room")
-		server.running = newState
+		server.Running = newState
 		wsRoom := websocket.WebsocketHub.GetRoom("server_status")
-		wsRoom.Send("Server status has changed")
+		response, _ := json.Marshal(server)
+		wsRoom.Send(string(response))
 	}
 }
 
 func (server *Server) GetRunning() bool {
-	return server.running
+	return server.Running
 }
 
 func (server *Server) autostart() {
@@ -302,9 +303,10 @@ func (server *Server) Run() error {
 	server.SetRunning(true)
 
 	err = server.Cmd.Wait()
+	log.Printf("Factorio process is closed")
+	server.SetRunning(false)
 	if err != nil {
 		log.Printf("Factorio process exited with error: %s", err)
-		server.SetRunning(false)
 		return err
 	}
 
@@ -340,13 +342,15 @@ func (server *Server) parseRunningCommand(std io.ReadCloser) (err error) {
 			// check if slice index is greater than 2 to prevent panic
 			if len(line) > 2 {
 				// log line for opened rcon connection
-				if strings.Contains(strings.Join(line, " "), rconLog) {
+				if strings.Contains(text, rconLog) {
 					log.Printf("Rcon running on Factorio Server")
 					err = connectRC()
 					if err != nil {
 						log.Printf("Error: %s", err)
 					}
 				}
+
+				server.checkProcessHealth(text)
 			}
 		}
 	}

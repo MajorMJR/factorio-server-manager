@@ -3,6 +3,7 @@ package factorio
 import (
 	"log"
 	"os"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -65,18 +66,21 @@ func (server *Server) Stop() error {
 	// Send CTRL+C to all processes attached to the console (ourself, and the factorio server instance)
 	sendCtrlCToPid(0)
 	log.Println("Sent SIGINT to Factorio process. Factorio shutting down...")
-
-	// Somehow, the Factorio devs managed to code the game to react appropriately to CTRL+C, including
-	// saving the game, but not actually exit. So, we still have to manually kill the process, and
-	// for extra fun, there's no way to know when the server save has actually completed (unless we want
-	// to inject filesystem logic into what should be a process-level Stop() routine), so our best option
-	// is to just wait an arbitrary amount of time and hope that the save is successful in that time.
-	time.Sleep(2 * time.Second)
-	server.Cmd.Process.Signal(os.Kill)
-
-	// Re-enable handling of CTRL+C after we're sure that the factrio server is shut down.
+	time.Sleep(20 * time.Millisecond)
+	// Re-enable handling of CTRL+C after we're sure that the factorio server is shut down.
 	setCtrlHandlingIsDisabledForThisProcess(false)
 
-	server.SetRunning(false)
 	return nil
+}
+
+func (server *Server) checkProcessHealth(text string) {
+	// check if the output indicates a server shutdown
+	if strings.Contains(text, "ServerMultiplayerManager.cpp:783: updateTick(0) changing state from(Disconnected) to(Closed)") {
+		// Somehow, the Factorio devs managed to code the game to react appropriately to CTRL+C, including
+		// saving the game, but not actually exit. So, we still have to manually kill the process, and
+		// for extra fun, there's no way to know when the server save has actually completed (unless we want
+		// to inject filesystem logic into what should be a process-level Stop() routine), so our best option
+		// is to just wait an arbitrary amount of time and hope that the save is successful in that time.
+		server.Cmd.Process.Signal(os.Kill)
+	}
 }

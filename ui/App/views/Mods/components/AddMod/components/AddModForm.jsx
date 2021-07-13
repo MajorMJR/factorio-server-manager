@@ -59,9 +59,8 @@ const AddModForm = ({setIsFactorioAuthenticated, fuse, refetchInstalledMods}) =>
 
     const openSelectVersionModal = async data => {
         const mod = await modsResource.portal.info(selectedMod.item.name);
-        setReleases(mod.releases || [])
-        console.log(releases)
-        setIsModalOpen(true)
+        setReleases(mod.releases || []);
+        setIsModalOpen(true);
     }
 
     const install = async release => {
